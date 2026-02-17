@@ -1,6 +1,5 @@
- (cd "$(git rev-parse --show-toplevel)" && git apply --3way <<'EOF' 
 diff --git a/index.html b/index.html
-index c223dd8bc76debfec2c3dc874ba6ddaece29c76f..154c99029f3ddc11e2983f5a8b183164a82acab2 100644
+index c223dd8bc76debfec2c3dc874ba6ddaece29c76f..c17a1c094e98bf6df217e5fa6e5621e6a9fc15ab 100644
 --- a/index.html
 +++ b/index.html
 @@ -262,50 +262,64 @@ body{
@@ -522,7 +521,7 @@ index c223dd8bc76debfec2c3dc874ba6ddaece29c76f..154c99029f3ddc11e2983f5a8b183164
      win.classList.add("dragging");
      document.body.style.userSelect="none";
    });
-@@ -2444,125 +2591,256 @@ registerApp("calculator",{
+@@ -2444,125 +2591,289 @@ registerApp("calculator",{
  });
  function setupCalculator(root){
    const display=root.querySelector("#calcDisplay");
@@ -550,8 +549,19 @@ index c223dd8bc76debfec2c3dc874ba6ddaece29c76f..154c99029f3ddc11e2983f5a8b183164
    /**************** Recycle Bin ****************/
 +
  function moveToRecycleBin(icon){
-   OS.state.recycleBin.push({name:icon.name,appId:icon.appId,time:new Date()});
+-  OS.state.recycleBin.push({name:icon.name,appId:icon.appId,time:new Date()});
++  ensureFsShape();
 +  const desktopItems=OS.state.fs.folders.Desktop;
++  const fsEntry=desktopItems.find(it=>it.id===icon.id);
++  OS.state.recycleBin.push({
++    id:icon.id,
++    name:icon.name,
++    appId:icon.appId,
++    iconType:icon.type||"shortcut",
++    fsType:fsEntry?fsEntry.type:(icon.type==="folder"?"folder":"app-shortcut"),
++    content:fsEntry?fsEntry.content:(icon.appId||""),
++    time:new Date()
++  });
 +  OS.state.fs.folders.Desktop=desktopItems.filter(it=>it.id!==icon.id);
 +  saveOSState();
  }
@@ -576,11 +586,23 @@ index c223dd8bc76debfec2c3dc874ba6ddaece29c76f..154c99029f3ddc11e2983f5a8b183164
      `;
      row.querySelector(`[data-restore]`).onclick=()=>{
        const it=OS.state.recycleBin[idx];
++      ensureFsShape();
++      const restoredId=it.id||("restored-"+Date.now());
        OS.state.desktopIcons.push({
-         id:"restored-"+Date.now(),
+-        id:"restored-"+Date.now(),
++        id:restoredId,
          name:it.name,
-         appId:it.appId,
-         x:120,y:40,selected:false,type:"shortcut"
+-        appId:it.appId,
+-        x:120,y:40,selected:false,type:"shortcut"
++        appId:it.appId||null,
++        x:120,y:40,selected:false,type:it.iconType||"shortcut"
++      });
++      OS.state.fs.folders.Desktop.push({
++        id:restoredId,
++        name:it.name,
++        type:it.fsType||((it.iconType||"shortcut")==="folder"?"folder":"app-shortcut"),
++        content:it.content||it.appId||"",
++        modifiedAt:new Date().toISOString()
        });
        OS.state.recycleBin.splice(idx,1);
 +
@@ -677,11 +699,22 @@ index c223dd8bc76debfec2c3dc874ba6ddaece29c76f..154c99029f3ddc11e2983f5a8b183164
 +      const row=document.createElement("div");
 +      row.className="explorer-row";
 +      const modified=new Date(entry.modifiedAt||Date.now()).toLocaleDateString();
-+      row.innerHTML=`
-+        <div class="explorer-row-name">${entry.type==="folder"?"📁":"📄"}<span>${entry.name}</span></div>
-+        <div>${entry.type}</div>
-+        <div style="color:var(--text-sub);">${modified}</div>
-+      `;
++      const nameCell=document.createElement("div");
++      nameCell.className="explorer-row-name";
++      const iconGlyph=document.createElement("span");
++      iconGlyph.textContent=entry.type==="folder"?"📁":"📄";
++      const nameText=document.createElement("span");
++      nameText.textContent=entry.name;
++      nameCell.appendChild(iconGlyph);
++      nameCell.appendChild(nameText);
++      const typeCell=document.createElement("div");
++      typeCell.textContent=entry.type;
++      const dateCell=document.createElement("div");
++      dateCell.style.color="var(--text-sub)";
++      dateCell.textContent=modified;
++      row.appendChild(nameCell);
++      row.appendChild(typeCell);
++      row.appendChild(dateCell);
 +      const actionWrap=document.createElement("div");
 +      actionWrap.className="explorer-actions";
 +      const renameBtn=document.createElement("button");
@@ -706,14 +739,17 @@ index c223dd8bc76debfec2c3dc874ba6ddaece29c76f..154c99029f3ddc11e2983f5a8b183164
 +      deleteBtn.style.padding="2px 8px";
 +      deleteBtn.textContent="Delete";
 +      deleteBtn.onclick=()=>{
-+        removeFsItem(currentFolder,entry.id);
 +        if(currentFolder==="Desktop"){
 +          const icon=OS.state.desktopIcons.find(i=>i.id===entry.id);
 +          if(icon){
 +            moveToRecycleBin(icon);
 +            OS.state.desktopIcons=OS.state.desktopIcons.filter(i=>i.id!==entry.id);
 +            renderDesktopIcons();
++          }else{
++            removeFsItem(currentFolder,entry.id);
 +          }
++        }else{
++          removeFsItem(currentFolder,entry.id);
 +        }
 +        renderList();
 +      };
@@ -779,7 +815,7 @@ index c223dd8bc76debfec2c3dc874ba6ddaece29c76f..154c99029f3ddc11e2983f5a8b183164
      main.innerHTML=`
        <h2>System</h2>
        <p><strong>OS:</strong> Liquid Plastic OS 1.x</p>
-@@ -2574,80 +2852,88 @@ function renderThisPCView(view,main){
+@@ -2574,80 +2885,88 @@ function renderThisPCView(view,main){
    }else if(view==="storage"){
      main.innerHTML=`
        <h2>Storage</h2>
@@ -869,7 +905,7 @@ index c223dd8bc76debfec2c3dc874ba6ddaece29c76f..154c99029f3ddc11e2983f5a8b183164
  registerApp("store",{
    title:"Store",
    createContent(){
-@@ -3022,114 +3308,125 @@ function renderStartMenuContent(){
+@@ -3022,114 +3341,125 @@ function renderStartMenuContent(){
  
    updateAccountUI();
  }
@@ -996,7 +1032,7 @@ index c223dd8bc76debfec2c3dc874ba6ddaece29c76f..154c99029f3ddc11e2983f5a8b183164
    const menu=$("#ctxMenu");
    const inner=menu.querySelector(".inner");
    inner.innerHTML=`
-@@ -3177,42 +3474,44 @@ function showTaskbarAppContextMenu(tbBtn,x,y){
+@@ -3177,42 +3507,44 @@ function showTaskbarAppContextMenu(tbBtn,x,y){
  
  /**************** Global auto-close menus ****************/
  document.addEventListener("mousedown",(e)=>{
@@ -1041,6 +1077,3 @@ index c223dd8bc76debfec2c3dc874ba6ddaece29c76f..154c99029f3ddc11e2983f5a8b183164
  </script>
  </body>
  </html>
- 
-EOF
-)
