@@ -1,0 +1,1046 @@
+ (cd "$(git rev-parse --show-toplevel)" && git apply --3way <<'EOF' 
+diff --git a/index.html b/index.html
+index c223dd8bc76debfec2c3dc874ba6ddaece29c76f..154c99029f3ddc11e2983f5a8b183164a82acab2 100644
+--- a/index.html
++++ b/index.html
+@@ -262,50 +262,64 @@ body{
+   cursor:pointer;position:relative;background:rgba(15,23,42,0.95);
+ }
+ .settings-toggle-knob{
+   position:absolute;width:14px;height:14px;border-radius:999px;background:#e5e7eb;top:0;left:0;
+   transform:translate(0,0);transition:transform .12s;
+ }
+ .settings-toggle.on .settings-toggle-knob{transform:translate(14px,0);}
+ .glass-slider{width:100%;margin-top:6px;}
+ 
+ /* Notes */
+ .notes-area{
+   width:100%;height:100%;border-radius:10px;border:1px solid rgba(55,65,81,.9);
+   background:rgba(15,23,42,.95);color:var(--text-main);padding:8px;font-size:13px;resize:none;outline:none;
+ }
+ 
+ /* This PC */
+ .thispc-app{height:100%;display:flex}
+ .thispc-nav{
+   width:140px;border-right:1px solid rgba(55,65,81,.9);padding:6px;font-size:12px;
+ }
+ .thispc-nav-item{padding:5px 6px;border-radius:6px;cursor:pointer;}
+ .thispc-nav-item:hover{background:rgba(31,41,55,.9);}
+ .thispc-nav-item.active{background:rgba(37,99,235,.6);}
+ .thispc-main{flex:1;padding:8px;font-size:12px;overflow:auto}
+ 
++.explorer-app{height:100%;display:flex;flex-direction:column;font-size:12px;}
++.explorer-toolbar{display:flex;gap:6px;align-items:center;margin-bottom:8px;flex-wrap:wrap;}
++.explorer-path{font-family:monospace;font-size:11px;color:var(--text-sub);padding:2px 6px;border:1px solid rgba(55,65,81,.9);border-radius:999px;}
++.explorer-main{display:flex;gap:8px;flex:1;min-height:0;}
++.explorer-sidebar{width:130px;border-right:1px solid rgba(55,65,81,.9);padding-right:8px;overflow:auto;}
++.explorer-side-item{padding:5px 6px;border-radius:6px;cursor:pointer;}
++.explorer-side-item:hover{background:rgba(31,41,55,.9);}
++.explorer-side-item.active{background:rgba(37,99,235,.6);}
++.explorer-list{flex:1;border:1px solid rgba(55,65,81,.9);border-radius:10px;padding:6px;overflow:auto;}
++.explorer-row{display:grid;grid-template-columns:1fr 90px 120px;gap:8px;padding:6px;border-radius:8px;align-items:center;}
++.explorer-row:hover{background:rgba(31,41,55,.75);}
++.explorer-row-name{display:flex;align-items:center;gap:6px;}
++.explorer-actions{display:flex;gap:6px;justify-content:flex-end;}
++
+ /* Recycle bin */
+ .recycle-bin-window{display:flex;flex-direction:column;height:100%}
+ .recycle-bin-header{display:flex;justify-content:flex-end;margin-bottom:6px}
+ .rb-list{flex:1;overflow:auto;border-radius:10px;border:1px solid rgba(55,65,81,.9);padding:6px;}
+ .rb-empty-msg{font-size:12px;color:var(--text-sub);}
+ .rb-item{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid rgba(31,41,55,.9);}
+ .rb-item-actions button{
+   padding:2px 8px;border-radius:999px;border:1px solid rgba(59,130,246,.9);
+   background:rgba(15,23,42,.95);color:var(--text-main);font-size:11px;cursor:pointer;margin-left:2px;
+ }
+ 
+ /* Store */
+ .store-app{font-size:12px}
+ .store-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-top:8px;}
+ .store-card{
+   border-radius:10px;padding:6px;border:1px solid rgba(55,65,81,.9);
+   background:rgba(15,23,42,.95);
+ }
+ .store-card-title{font-weight:600;font-size:12px;margin-bottom:2px;}
+ .store-card-desc{font-size:11px;color:var(--text-sub);margin-bottom:4px;}
+ .store-card-buttons{display:flex;gap:6px;margin-top:4px;}
+ 
+ /* Toast */
+ #toast{
+   position:fixed;bottom:56px;right:10px;min-width:180px;max-width:260px;
+@@ -480,78 +494,132 @@ button:hover,
+ </div>
+ 
+ <!-- Desktop -->
+ <div class="desktop" id="desktopRoot">
+   <div class="glow g1"></div>
+   <div class="glow g2"></div>
+   <div class="glow g3"></div>
+   <div id="desktopIcons"></div>
+ </div>
+ 
+ <div id="selectBox"></div>
+ <div id="ctxMenu"><div class="inner"></div></div>
+ 
+ <div id="startMenu"><div class="inner"></div></div>
+ <div id="notifPanel"><div class="inner"></div></div>
+ <div id="taskbar"></div>
+ 
+ <div id="toast"></div>
+ 
+ <script>
+ 
+   const $  = (q, root=document) => root.querySelector(q);
+ const $$ = (q, root=document) => Array.from(root.querySelectorAll(q));
+ 
+ const OS = {
++  storageKey:"lp-os-state-v1",
+   config:{
+     desktopGrid:80,
+     clock24:false,
+     taskbarAutohide:false,
+     glassLevel:0.8
+   },
+   state:{
+     bootDone:false,
+     locked:true,
+     desktopIcons:[],
+     windows:[],
+     activeWindow:null,
+     nextZ:200,
+     apps:{},
+     notifications:[],
+     startMenuOpen:false,
+     notifOpen:false,
+     recycleBin:[],
++    fs:{
++      folders:{
++        "Desktop":[],
++        "Documents":[{id:"doc-welcome",name:"Welcome.txt",type:"txt",content:"Welcome to Liquid Plastic OS."}],
++        "Downloads":[{id:"dl-release",name:"Release Notes.txt",type:"txt",content:"Version 1.x concept build."}],
++        "Pictures":[]
++      }
++    },
+     account:{
+       name:"Guest",
+       initials:"G",
+       password:"",
+       requirePassword:false,
+       avatarDataUrl:null
+     }
+   }
+ };
+ 
++function safeDateValue(v){
++  const d=new Date(v);
++  return Number.isNaN(d.getTime()) ? new Date() : d;
++}
++function ensureFsShape(){
++  if(!OS.state.fs || !OS.state.fs.folders){
++    OS.state.fs={folders:{"Desktop":[],"Documents":[],"Downloads":[],"Pictures":[]}};
++  }
++  ["Desktop","Documents","Downloads","Pictures"].forEach(name=>{
++    if(!Array.isArray(OS.state.fs.folders[name])) OS.state.fs.folders[name]=[];
++  });
++}
++function saveOSState(){
++  try{
++    const payload={
++      config:OS.config,
++      desktopIcons:OS.state.desktopIcons,
++      recycleBin:OS.state.recycleBin.map(item=>({...item,time:item.time instanceof Date ? item.time.toISOString() : item.time})),
++      account:OS.state.account,
++      pinnedApps,
++      fs:OS.state.fs
++    };
++    localStorage.setItem(OS.storageKey, JSON.stringify(payload));
++  }catch(e){}
++}
++function loadOSState(){
++  try{
++    const raw=localStorage.getItem(OS.storageKey);
++    if(!raw) return;
++    const parsed=JSON.parse(raw);
++    if(parsed && parsed.config && typeof parsed.config==="object") Object.assign(OS.config, parsed.config);
++    if(Array.isArray(parsed?.desktopIcons)) OS.state.desktopIcons=parsed.desktopIcons;
++    if(Array.isArray(parsed?.recycleBin)){
++      OS.state.recycleBin=parsed.recycleBin.map(it=>({
++        ...it,
++        time:safeDateValue(it.time)
++      }));
++    }
++    if(parsed && parsed.account && typeof parsed.account==="object") Object.assign(OS.state.account, parsed.account);
++    if(parsed && parsed.fs && typeof parsed.fs==="object") OS.state.fs=parsed.fs;
++    if(Array.isArray(parsed?.pinnedApps) && parsed.pinnedApps.length) pinnedApps=[...new Set(parsed.pinnedApps)];
++    ensureFsShape();
++  }catch(e){}
++}
++
+ /* Persisted glass level */
+ (function(){
+   try{
+     const v = localStorage.getItem("lp-glass");
+     if(v!==null){
+       const n = Number(v);
+       if(!isNaN(n) && n>0 && n<=1) OS.config.glassLevel = n;
+     }
+   }catch(e){}
+ })();
+ 
+ /* Toast + notifications */
+ function showToast(msg){
+   const t=$("#toast");
+   if(!t) return;
+   t.textContent=msg;
+   t.classList.add("show");
+   setTimeout(()=>t.classList.remove("show"),2000);
+ }
+ function notify(title,message){
+   OS.state.notifications.unshift({
+     id:Date.now()+"-"+Math.random().toString(16).slice(2),
+     title,message,time:new Date()
+   });
+   renderNotifications();
+@@ -730,76 +798,107 @@ function showLockscreen(first=false){
+     }else{
+       finishUnlock();
+     }
+   }
+ 
+   if(requirePw){
+     if(lockHint) lockHint.textContent = "Enter your password to unlock.";
+     if(pwArea) pwArea.style.display="block";
+     if(pwError) pwError.style.display="none";
+     if(pwInput) pwInput.focus();
+ 
+     if(lockAccount) lockAccount.onclick = ()=>{ if(pwInput) pwInput.focus(); };
+     window.onkeydown = (e)=>{
+       if(!OS.state.locked) return;
+       if(e.key === "Enter") attemptUnlock();
+     };
+   }else{
+     if(lockHint) lockHint.textContent = "Click your name or press any key to sign in.";
+     if(pwArea) pwArea.style.display="none";
+     if(lockAccount) lockAccount.onclick = attemptUnlock;
+     window.onkeydown = (e)=>{ if(OS.state.locked) attemptUnlock(); };
+   }
+ }
+ 
+ /* Desktop icons */
++function addFsItem(folder,name,type="folder",content=""){
++  ensureFsShape();
++  const entry={id:`fs-${Date.now()}-${Math.random().toString(16).slice(2,8)}`,name,type,content,modifiedAt:new Date().toISOString()};
++  OS.state.fs.folders[folder].push(entry);
++  saveOSState();
++  return entry;
++}
++function removeFsItem(folder,id){
++  ensureFsShape();
++  const before=OS.state.fs.folders[folder].length;
++  OS.state.fs.folders[folder]=OS.state.fs.folders[folder].filter(it=>it.id!==id);
++  if(OS.state.fs.folders[folder].length!==before) saveOSState();
++}
+ function seedDesktopIcons(){
+-  OS.state.desktopIcons = []; // start empty; user can drag apps from Start
++  if(Array.isArray(OS.state.desktopIcons) && OS.state.desktopIcons.length) return;
++  ensureFsShape();
++  OS.state.desktopIcons=[];
++  OS.state.fs.folders.Desktop.forEach((item,idx)=>{
++    OS.state.desktopIcons.push({
++      id:item.id,
++      name:item.name,
++      appId:item.type==="app-shortcut" ? item.content : null,
++      x:20+(idx%6)*90,
++      y:20+Math.floor(idx/6)*90,
++      selected:false,
++      type:item.type==="folder"?"folder":"shortcut",
++      children:[]
++    });
++  });
+ }
+ function renderDesktopIcons(){
+   const layer=$("#desktopIcons");
+   if(!layer) return;
+   layer.innerHTML="";
+ 
+   OS.state.desktopIcons.forEach((icon,index)=>{
+     const el=document.createElement("div");
+     el.className="icon";
+     el.dataset.index=index;
+     el.style.left=icon.x+"px";
+     el.style.top=icon.y+"px";
+ 
+     let bodyHTML='<div class="icon-body"></div>';
+     if(icon.type==="folder"){
+       const count=Math.min(4,(icon.children||[]).length);
+       bodyHTML=`
+         <div class="icon-body">
+           <div class="folder-grid-preview">
+             ${Array.from({length:count}).map(()=>"<div></div>").join("")}
+           </div>
+         </div>`;
+     }
+-    el.innerHTML= bodyHTML + `<div class="icon-label">${icon.name}</div>`;
++    el.innerHTML=bodyHTML;
++    const label=document.createElement("div");
++    label.className="icon-label";
++    label.textContent=icon.name;
++    el.appendChild(label);
+     if(icon.selected) el.classList.add("selected");
+ 
+     el.addEventListener("mousedown",(e)=>{
+       if(e.button!==0) return;
+       if(!e.ctrlKey && !e.metaKey){
+         OS.state.desktopIcons.forEach(i=>i.selected=false);
+       }
+       icon.selected=true;
+       renderDesktopIcons();
+     });
+ 
+     el.addEventListener("dblclick",()=>{
+       if(icon.type==="folder") openAppFolder(icon);
+       else if(icon.appId) openApp(icon.appId);
+     });
+ 
+     el.addEventListener("contextmenu",(e)=>{
+       e.preventDefault();
+       e.stopPropagation();
+       showDesktopContextMenuForIcon(icon,index,e.clientX,e.clientY);
+     });
+ 
+     layer.appendChild(el);
+   });
+ }
+@@ -947,104 +1046,146 @@ function enableIconDragging(){
+     const sel=OS.state.desktopIcons.filter(i=>i.selected);
+     if(sel.length===1){
+       const dragged=sel[0];
+       const draggedRect=getIconRect(dragged);
+       const target=OS.state.desktopIcons.find(i=>i!==dragged && overlapRect(draggedRect,getIconRect(i)));
+       if(target){
+         if(target.type!=="folder"){
+           const folder={
+             id:"folder-"+Date.now(),
+             name:"App Folder",
+             appId:null,
+             x:target.x,
+             y:target.y,
+             selected:false,
+             type:"folder",
+             children:[target.appId,dragged.appId].filter(Boolean)
+           };
+           OS.state.desktopIcons=OS.state.desktopIcons.filter(i=>i!==dragged && i!==target);
+           OS.state.desktopIcons.push(folder);
+         }else{
+           if(dragged.appId && !target.children.includes(dragged.appId)){
+             target.children.push(dragged.appId);
+           }
+           OS.state.desktopIcons=OS.state.desktopIcons.filter(i=>i!==dragged);
+         }
++
+         renderDesktopIcons();
++        saveOSState();
+         return;
+       }
+     }
+ 
+     OS.state.desktopIcons.forEach(icon=>{
+       icon.x=Math.round(icon.x/grid)*grid;
+       icon.y=Math.round(icon.y/grid)*grid;
+     });
++
+     renderDesktopIcons();
++    saveOSState();
+   });
+ }
+ 
+ /* Desktop context menu */
+ function showDesktopContextMenuForIcon(icon,index,x,y){
+   const menu=$("#ctxMenu");
+   const inner=menu.querySelector(".inner");
+   inner.innerHTML=`
+     <div class="ctx-item" data-act="open">Open</div>
+     <div class="ctx-item" data-act="rename">Rename</div>
+     <div class="ctx-item" data-act="pin">Pin / Unpin from Start</div>
+     <div class="ctx-item" data-act="remove">Remove from Desktop</div>
+   `;
+   menu.style.left=x+"px";
+   menu.style.top=y+"px";
+   menu.style.display="block";
+ 
+   inner.querySelectorAll(".ctx-item").forEach(item=>{
+     item.onclick=()=>{
+       const a=item.dataset.act;
+       if(a==="open"){
+         if(icon.type==="folder") openAppFolder(icon);
+         else if(icon.appId) openApp(icon.appId);
+       }
+       if(a==="rename"){
+         const newName=prompt("Rename:",icon.name);
+         if(newName && newName.trim()){
+           icon.name=newName.trim();
++          const desktopItem=OS.state.fs.folders.Desktop.find(it=>it.id===icon.id);
++          if(desktopItem) desktopItem.name=icon.name;
+         }
+       }
+       if(a==="pin"){
+         togglePinStart(icon.appId);
+       }
+       if(a==="remove"){
+         moveToRecycleBin(icon);
+         OS.state.desktopIcons.splice(index,1);
+         renderRecycleBinList();
+       }
+       renderDesktopIcons();
++      saveOSState();
+       menu.style.display="none";
+     };
+   });
+ }
+ 
++
++function showDesktopBackgroundContextMenu(x,y){
++  const menu=$("#ctxMenu");
++  const inner=menu.querySelector(".inner");
++  inner.innerHTML=`
++    <div class="ctx-item" data-act="new-folder">New Folder</div>
++    <div class="ctx-item" data-act="open-explorer">Open File Explorer</div>
++  `;
++  menu.style.left=x+"px";
++  menu.style.top=y+"px";
++  menu.style.display="block";
++  inner.querySelector("[data-act='new-folder']").onclick=()=>{
++    const idx=OS.state.desktopIcons.length;
++    const name=`New Folder ${idx+1}`;
++    const entry=addFsItem("Desktop",name,"folder","");
++    OS.state.desktopIcons.push({
++      id:entry.id,
++      name:entry.name,
++      appId:null,
++      x:20+(idx%6)*90,
++      y:20+Math.floor(idx/6)*90,
++      selected:false,
++      type:"folder",
++      children:[]
++    });
++    renderDesktopIcons();
++    saveOSState();
++    menu.style.display="none";
++  };
++  inner.querySelector("[data-act='open-explorer']").onclick=()=>{
++    openApp("explorer");
++    menu.style.display="none";
++  };
++}
++
+ /* Window manager */
+ function createWindow(appId,title,contentNode){
+   const win=document.createElement("div");
+   win.className="window hidden";
+   win.dataset.appId=appId;
+   const header=document.createElement("div");
+   header.className="win-header";
+   header.innerHTML=`
+     <div class="win-title">${title}</div>
+     <div class="win-controls">
+       <button class="win-btn" data-min>-</button>
+       <button class="win-btn" data-max>□</button>
+       <button class="win-btn" data-close>×</button>
+     </div>
+   `;
+   const body=document.createElement("div");
+   body.className="win-body";
+   if(contentNode) body.appendChild(contentNode);
+   const resizeHandle=document.createElement("div");
+   resizeHandle.className="window-resize-handle";
+   win.appendChild(header);
+   win.appendChild(body);
+   win.appendChild(resizeHandle);
+   document.body.appendChild(win);
+ 
+@@ -1061,54 +1202,60 @@ function createWindow(appId,title,contentNode){
+     win.style.display="flex";
+     win.classList.remove("hidden");
+     win.classList.add("visible");
+   });
+   renderTaskbar();
+   return win;
+ }
+ function focusWindow(win){
+   OS.state.windows.forEach(w=>w.style.zIndex=200);
+   win.style.zIndex=OS.state.nextZ++;
+   OS.state.activeWindow=win;
+   renderTaskbar();
+ }
+ function hookWindowControls(win){
+   const btnMin=win.querySelector("[data-min]");
+   const btnMax=win.querySelector("[data-max]");
+   const btnClose=win.querySelector("[data-close]");
+   btnMin.onclick=()=>{
+     win.style.display="none";
+     renderTaskbar();
+   };
+   btnMax.onclick=()=>{
+     if(win.classList.contains("maximized")){
+       win.classList.remove("maximized");
+       win.style.position="absolute";
+-      win.style.left="140px";
+-      win.style.top="80px";
+-      win.style.width="";win.style.height="";
++      win.style.left=win.dataset.prevLeft||"140px";
++      win.style.top=win.dataset.prevTop||"80px";
++      win.style.width=win.dataset.prevWidth||"";
++      win.style.height=win.dataset.prevHeight||"";
+     }else{
++      const r=win.getBoundingClientRect();
++      win.dataset.prevLeft=r.left+"px";
++      win.dataset.prevTop=r.top+"px";
++      win.dataset.prevWidth=r.width+"px";
++      win.dataset.prevHeight=r.height+"px";
+       win.classList.add("maximized");
+       win.style.position="fixed";
+       win.style.left="0";win.style.top="0";
+       win.style.width="100vw";win.style.height="100vh";
+     }
+   };
+   btnClose.onclick=()=>{
+     win.remove();
+     OS.state.windows=OS.state.windows.filter(w=>w!==win);
+     if(OS.state.activeWindow===win) OS.state.activeWindow=null;
+     renderTaskbar();
+   };
+   win.addEventListener("mousedown",()=>focusWindow(win));
+ }
+ function enableWindowDragging(win,header){
+   let dragging=false,sx=0,sy=0,wl=0,wt=0;
+   header.addEventListener("mousedown",(e)=>{
+     if(e.button!==0) return;
+     dragging=true;
+     sx=e.clientX;sy=e.clientY;
+     const r=win.getBoundingClientRect();
+     wl=r.left;wt=r.top;
+     win.classList.add("dragging");
+     document.body.style.userSelect="none";
+   });
+@@ -2444,125 +2591,256 @@ registerApp("calculator",{
+ });
+ function setupCalculator(root){
+   const display=root.querySelector("#calcDisplay");
+   let expr="";
+   function updateDisplay(){display.textContent=expr||"0";}
+   function press(key){
+     if(key==="C"){expr="";updateDisplay();return;}
+     if(key==="="){
+       try{
+         const val = Function(`"use strict";return (${expr||"0"})`)();
+         expr=String(val);
+       }catch{
+         expr="Error";
+       }
+       updateDisplay();return;
+     }
+     if(expr==="Error") expr="";
+     expr+=key;updateDisplay();
+   }
+   root.querySelectorAll("[data-key]").forEach(btn=>{
+     btn.onclick=()=>press(btn.dataset.key);
+   });
+ }
+ 
+   /**************** Recycle Bin ****************/
++
+ function moveToRecycleBin(icon){
+   OS.state.recycleBin.push({name:icon.name,appId:icon.appId,time:new Date()});
++  const desktopItems=OS.state.fs.folders.Desktop;
++  OS.state.fs.folders.Desktop=desktopItems.filter(it=>it.id!==icon.id);
++  saveOSState();
+ }
+ function renderRecycleBinList(){
+   const list=$("#rbList");
+   if(!list) return;
+   list.innerHTML="";
+   if(OS.state.recycleBin.length===0){
+     list.innerHTML=`<div class="rb-empty-msg">Recycle Bin is empty.</div>`;
+     return;
+   }
+   OS.state.recycleBin.forEach((item,idx)=>{
+     const row=document.createElement("div");
+     row.className="rb-item";
+     const time=item.time.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"});
+     row.innerHTML=`
+       <div>${item.name} <span style="font-size:11px;color:var(--text-sub);">(${time})</span></div>
+       <div class="rb-item-actions">
+         <button data-restore="${idx}">Restore</button>
+         <button data-delete="${idx}">Delete</button>
+       </div>
+     `;
+     row.querySelector(`[data-restore]`).onclick=()=>{
+       const it=OS.state.recycleBin[idx];
+       OS.state.desktopIcons.push({
+         id:"restored-"+Date.now(),
+         name:it.name,
+         appId:it.appId,
+         x:120,y:40,selected:false,type:"shortcut"
+       });
+       OS.state.recycleBin.splice(idx,1);
++
+       renderRecycleBinList();
+       renderDesktopIcons();
++      saveOSState();
+     };
+     row.querySelector(`[data-delete]`).onclick=()=>{
++
+       OS.state.recycleBin.splice(idx,1);
+       renderRecycleBinList();
++      saveOSState();
+     };
+     list.appendChild(row);
+   });
+ }
+ registerApp("recycle-bin",{
+   title:"Recycle Bin",
+   createContent(){
+     const root=document.createElement("div");
+     root.className="recycle-bin-window";
+     root.innerHTML=`
+       <div class="recycle-bin-header">
+         <button class="theme-btn" id="rbEmpty">Empty Recycle Bin</button>
+       </div>
+       <div class="rb-list" id="rbList"></div>
+     `;
+     root.querySelector("#rbEmpty").onclick=()=>{
+       const count=OS.state.recycleBin.length;
+       OS.state.recycleBin=[];
+       renderRecycleBinList();
++
+       notify("Recycle Bin",`Emptied (${count} item${count===1?"":"s"})`);
+       showToast(`Recycle Bin emptied (${count})`);
++      saveOSState();
+     };
+     renderRecycleBinList();
+     return root;
+   }
+ });
+ 
++/**************** File Explorer ****************/
++registerApp("explorer",{
++  title:"File Explorer",
++  createContent(){
++    const root=document.createElement("div");
++    root.className="explorer-app";
++    root.innerHTML=`
++      <div class="explorer-toolbar">
++        <button class="theme-btn" data-new-folder>New Folder</button>
++        <button class="theme-btn" data-new-file>New Text File</button>
++        <button class="theme-btn" data-refresh>Refresh</button>
++        <span class="explorer-path" id="expPath">/Desktop</span>
++      </div>
++      <div class="explorer-main">
++        <div class="explorer-sidebar" id="expSidebar"></div>
++        <div class="explorer-list" id="expList"></div>
++      </div>
++    `;
++    setupExplorer(root);
++    return root;
++  }
++});
++function setupExplorer(root){
++  ensureFsShape();
++  const folders=["Desktop","Documents","Downloads","Pictures"];
++  let currentFolder="Desktop";
++  const sidebar=root.querySelector("#expSidebar");
++  const list=root.querySelector("#expList");
++  const pathEl=root.querySelector("#expPath");
++
++  function renderSidebar(){
++    sidebar.innerHTML="";
++    folders.forEach(folder=>{
++      const item=document.createElement("div");
++      item.className="explorer-side-item"+(folder===currentFolder?" active":"");
++      item.textContent=folder;
++      item.onclick=()=>{currentFolder=folder;renderSidebar();renderList();};
++      sidebar.appendChild(item);
++    });
++  }
++  function renderList(){
++    const entries=OS.state.fs.folders[currentFolder]||[];
++    pathEl.textContent=`/${currentFolder}`;
++    list.innerHTML="";
++    if(!entries.length){
++      const empty=document.createElement("div");
++      empty.textContent="This folder is empty.";
++      empty.style.color="var(--text-sub)";
++      list.appendChild(empty);
++      return;
++    }
++    entries.forEach(entry=>{
++      const row=document.createElement("div");
++      row.className="explorer-row";
++      const modified=new Date(entry.modifiedAt||Date.now()).toLocaleDateString();
++      row.innerHTML=`
++        <div class="explorer-row-name">${entry.type==="folder"?"📁":"📄"}<span>${entry.name}</span></div>
++        <div>${entry.type}</div>
++        <div style="color:var(--text-sub);">${modified}</div>
++      `;
++      const actionWrap=document.createElement("div");
++      actionWrap.className="explorer-actions";
++      const renameBtn=document.createElement("button");
++      renameBtn.className="theme-btn";
++      renameBtn.style.padding="2px 8px";
++      renameBtn.textContent="Rename";
++      renameBtn.onclick=()=>{
++        const nv=prompt("Rename:",entry.name);
++        if(!nv||!nv.trim()) return;
++        entry.name=nv.trim();
++        entry.modifiedAt=new Date().toISOString();
++        if(currentFolder==="Desktop"){
++          const icon=OS.state.desktopIcons.find(i=>i.id===entry.id);
++          if(icon) icon.name=entry.name;
++          renderDesktopIcons();
++        }
++        saveOSState();
++        renderList();
++      };
++      const deleteBtn=document.createElement("button");
++      deleteBtn.className="theme-btn";
++      deleteBtn.style.padding="2px 8px";
++      deleteBtn.textContent="Delete";
++      deleteBtn.onclick=()=>{
++        removeFsItem(currentFolder,entry.id);
++        if(currentFolder==="Desktop"){
++          const icon=OS.state.desktopIcons.find(i=>i.id===entry.id);
++          if(icon){
++            moveToRecycleBin(icon);
++            OS.state.desktopIcons=OS.state.desktopIcons.filter(i=>i.id!==entry.id);
++            renderDesktopIcons();
++          }
++        }
++        renderList();
++      };
++      actionWrap.appendChild(renameBtn);
++      actionWrap.appendChild(deleteBtn);
++      row.appendChild(actionWrap);
++      list.appendChild(row);
++    });
++  }
++
++  root.querySelector("[data-new-folder]").onclick=()=>{
++    const entry=addFsItem(currentFolder,`New Folder ${(OS.state.fs.folders[currentFolder]||[]).length+1}`,"folder","");
++    if(currentFolder==="Desktop"){
++      OS.state.desktopIcons.push({id:entry.id,name:entry.name,appId:null,x:40,y:40,selected:false,type:"folder",children:[]});
++      renderDesktopIcons();
++    }
++    renderList();
++  };
++  root.querySelector("[data-new-file]").onclick=()=>{
++    addFsItem(currentFolder,`New Text File ${(OS.state.fs.folders[currentFolder]||[]).length+1}.txt`,"txt","");
++    renderList();
++  };
++  root.querySelector("[data-refresh]").onclick=renderList;
++
++  renderSidebar();
++  renderList();
++}
++
+ /**************** This PC ****************/
+ registerApp("thispc",{
+   title:"This PC",
+   createContent(){
+     const root=document.createElement("div");
+     root.className="thispc-app";
+     root.innerHTML=`
+       <div class="thispc-nav">
+         <div class="thispc-nav-item" data-view="system">System</div>
+         <div class="thispc-nav-item" data-view="storage">Storage</div>
+         <div class="thispc-nav-item" data-view="apps">Apps</div>
++        <div class="thispc-nav-item" data-view="files">Files</div>
+       </div>
+       <div class="thispc-main" id="thispc-main"></div>
+     `;
+     setupThisPC(root);
+     return root;
+   }
+ });
+ function setupThisPC(root){
+   const main=root.querySelector("#thispc-main");
+   const items=$$(".thispc-nav-item",root);
+   items.forEach(it=>{
+     it.onclick=()=>{
+       items.forEach(i=>i.classList.remove("active"));
+       it.classList.add("active");
+       renderThisPCView(it.dataset.view,main);
+     };
+   });
+   items[0].classList.add("active");
+   renderThisPCView("system",main);
+ }
+ function renderThisPCView(view,main){
+   if(view==="system"){
+     main.innerHTML=`
+       <h2>System</h2>
+       <p><strong>OS:</strong> Liquid Plastic OS 1.x</p>
+@@ -2574,80 +2852,88 @@ function renderThisPCView(view,main){
+   }else if(view==="storage"){
+     main.innerHTML=`
+       <h2>Storage</h2>
+       <div style="margin-top:8px;">
+         <div>LP-SSD0 (C:)</div>
+         <div style="height:10px;border-radius:999px;border:1px solid rgba(148,163,184,.6);overflow:hidden;margin-top:2px;">
+           <div style="width:45%;height:100%;background:linear-gradient(90deg,#22c55e,#16a34a);"></div>
+         </div>
+         <div style="font-size:11px;color:var(--text-sub);margin-top:2px;">45% used • 110 GB free of 200 GB</div>
+       </div>
+     `;
+   }else if(view==="apps"){
+     const appsHtml=Object.keys(OS.state.apps).map(id=>{
+       const app=OS.state.apps[id];
+       return `
+         <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(31,41,55,.9);">
+           <span>${app?app.title:id} <span style="font-size:11px;color:var(--text-sub);">(${id})</span></span>
+           <button class="theme-btn" data-open="${id}" style="padding:2px 8px;font-size:11px;">Open</button>
+         </div>
+       `;
+     }).join("");
+     main.innerHTML=`<h2>Installed apps</h2><div style="margin-top:8px;">${appsHtml}</div>`;
+     main.querySelectorAll("[data-open]").forEach(btn=>{
+       btn.onclick=()=>openApp(btn.dataset.open);
+     });
++  }else if(view==="files"){
++    ensureFsShape();
++    const rows=Object.entries(OS.state.fs.folders).map(([name,items])=>`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(31,41,55,.9);"><span>${name}</span><span style="color:var(--text-sub);">${items.length} item${items.length===1?"":"s"}</span></div>`).join("");
++    main.innerHTML=`<h2>Files</h2><div style="margin-top:8px;">${rows}<div style="margin-top:8px;"><button class="theme-btn" id="openExplorerBtn">Open File Explorer</button></div></div>`;
++    const b=main.querySelector("#openExplorerBtn");
++    if(b) b.onclick=()=>openApp("explorer");
+   }
+ }
+ 
+ /**************** Store ****************/
+-let pinnedApps=["thispc","browser","settings","notes","store","terminal","calculator","recycle-bin"];
++let pinnedApps=["thispc","explorer","browser","settings","notes","store","terminal","calculator","recycle-bin"];
+ function installStoreApp(id){
+   if(id==="paint" && !OS.state.apps["paint"]){
+     registerApp("paint",{
+       title:"Liquid Paint",
+       createContent(){
+         const div=document.createElement("div");
+         div.innerHTML=`<div style="font-size:12px;">Liquid Paint is a concept app. Imagine a canvas here.</div>`;
+         return div;
+       }
+     });
+   }
+   if(id==="music" && !OS.state.apps["music"]){
+     registerApp("music",{
+       title:"LP Music",
+       createContent(){
+         const div=document.createElement("div");
+         div.innerHTML=`<div style="font-size:12px;">LP Music is a concept app. Imagine a playlist here.</div>`;
+         return div;
+       }
+     });
+   }
+   if(!pinnedApps.includes(id)) pinnedApps.push(id);
+   notify("Store",`Installed ${id} and added to Start.`);
+   showToast(`Installed ${id}`);
++
+   if(OS.state.startMenuOpen) renderStartMenuContent();
++  saveOSState();
+ }
+ function uninstallStoreApp(id){
+   if(!OS.state.apps[id]){
+     showToast(`App ${id} is not installed.`);
+     return;
+   }
+   OS.state.windows.forEach(win=>{
+     if(win.dataset.appId===id) win.remove();
+   });
+   OS.state.windows=OS.state.windows.filter(w=>w.dataset.appId!==id);
+   if(OS.state.activeWindow && OS.state.activeWindow.dataset.appId===id){
+     OS.state.activeWindow=null;
+   }
+   delete OS.state.apps[id];
+   pinnedApps=pinnedApps.filter(a=>a!==id);
+   OS.state.desktopIcons=OS.state.desktopIcons.filter(i=>i.appId!==id);
+   renderDesktopIcons();
+   renderTaskbar();
+   notify("Store",`Uninstalled ${id}.`);
+   showToast(`Uninstalled ${id}`);
+   if(OS.state.startMenuOpen) renderStartMenuContent();
+ }
+ registerApp("store",{
+   title:"Store",
+   createContent(){
+@@ -3022,114 +3308,125 @@ function renderStartMenuContent(){
+ 
+   updateAccountUI();
+ }
+ function toggleStartMenu(force){
+   const m=$("#startMenu");
+   if(!m) return;
+   if(typeof force==="boolean") OS.state.startMenuOpen=force;
+   else OS.state.startMenuOpen=!OS.state.startMenuOpen;
+   if(OS.state.startMenuOpen){
+     renderStartMenuContent();
+     m.style.display="block";
+   }else{
+     m.style.display="none";
+   }
+ }
+ function togglePinStart(appId){
+   if(!appId) return;
+   if(pinnedApps.includes(appId)){
+     pinnedApps=pinnedApps.filter(id=>id!==appId);
+     notify("Start","App unpinned from Start.");
+   }else{
+     pinnedApps.push(appId);
+     notify("Start","App pinned to Start.");
+   }
+   if(OS.state.startMenuOpen) renderStartMenuContent();
++  saveOSState();
+ }
+ 
+ /* Drag from Start → Desktop */
+ const desktopEl=document.querySelector(".desktop");
+ if(desktopEl){
+   desktopEl.addEventListener("dragover",(e)=>{
+     if(currentDraggedAppId) e.preventDefault();
+   });
+   desktopEl.addEventListener("drop",(e)=>{
+     if(!currentDraggedAppId) return;
+     e.preventDefault();
+     const rect=desktopEl.getBoundingClientRect();
+     const x=e.clientX-rect.left;
+     const y=e.clientY-rect.top;
+     const app=OS.state.apps[currentDraggedAppId];
++    ensureFsShape();
++    const shortcutId="shortcut-"+Date.now();
+     OS.state.desktopIcons.push({
+-      id:"shortcut-"+Date.now(),
++      id:shortcutId,
+       name:app?app.title:currentDraggedAppId,
+       appId:currentDraggedAppId,
+       x:x-30,y:y-30,
+       selected:false,
+       type:"shortcut"
+     });
++    OS.state.fs.folders.Desktop.push({id:shortcutId,name:app?app.title:currentDraggedAppId,type:"app-shortcut",content:currentDraggedAppId,modifiedAt:new Date().toISOString()});
+     currentDraggedAppId=null;
+     renderDesktopIcons();
++    saveOSState();
+   });
+ }
+ 
+ /**************** Minimize all ****************/
+ function minimizeAllWindows(){
+   OS.state.windows.forEach(w=>w.style.display="none");
+   renderTaskbar();
+ }
+ 
+ /**************** Taskbar / Start / app right-click ****************/
+ document.addEventListener("contextmenu",(e)=>{
+   const iconEl=e.target.closest(".icon");
+   if(iconEl) return; // handled by desktop
+ 
+   const tbBtn=e.target.closest(".tb-app");
+   const tb=e.target.closest("#taskbar");
+   const startBtn=e.target.closest("#btnStart");
+   const startMenuEl=e.target.closest("#startMenu");
++  const desktopArea=e.target.closest("#desktopRoot");
+ 
+   if(tbBtn){
+     e.preventDefault();
+     showTaskbarAppContextMenu(tbBtn,e.clientX,e.clientY);
+     return;
+   }
+   if(startBtn){
+     e.preventDefault();
+     showStartSettingsMenu(e.clientX,e.clientY);
+     return;
+   }
+   if(tb && !tbBtn){
+     e.preventDefault();
+     showTaskbarSettingsMenu(e.clientX,e.clientY);
+     return;
+   }
+   if(startMenuEl){
+     e.preventDefault();
+     showStartSettingsMenu(e.clientX,e.clientY);
+     return;
+   }
++  if(desktopArea && !e.target.closest(".window") && !e.target.closest("#taskbar") && !e.target.closest("#startMenu") && !e.target.closest("#notifPanel")){
++    e.preventDefault();
++    showDesktopBackgroundContextMenu(e.clientX,e.clientY);
++    return;
++  }
+ });
+ function showTaskbarSettingsMenu(x,y){
+   const menu=$("#ctxMenu");
+   const inner=menu.querySelector(".inner");
+   inner.innerHTML=`
+     <div class="ctx-item" data-act="open-system">Taskbar settings...</div>
+   `;
+   menu.style.left=x+"px";
+   menu.style.top=y+"px";
+   menu.style.display="block";
+   inner.querySelector("[data-act='open-system']").onclick=()=>{
+     const win=openApp("settings");
+     if(win){
+       setTimeout(()=>{
+         const item=[...$$(".settings-item",win)].find(el=>el.dataset.panel==="system");
+         if(item) item.click();
+       },10);
+     }
+     menu.style.display="none";
+   };
+ }
+ function showStartSettingsMenu(x,y){
+   const menu=$("#ctxMenu");
+   const inner=menu.querySelector(".inner");
+   inner.innerHTML=`
+@@ -3177,42 +3474,44 @@ function showTaskbarAppContextMenu(tbBtn,x,y){
+ 
+ /**************** Global auto-close menus ****************/
+ document.addEventListener("mousedown",(e)=>{
+   if(!e.target.closest("#startMenu") && !e.target.closest("#taskbar")) toggleStartMenu(false);
+   if(!e.target.closest("#notifPanel") && !e.target.closest("#taskbar")) toggleNotifPanel(false);
+   if(!e.target.closest("#ctxMenu")) $("#ctxMenu").style.display="none";
+ });
+ 
+ /**************** Taskbar auto-hide hover behavior ****************/
+ document.addEventListener("mousemove",(e)=>{
+   if(!OS.config.taskbarAutohide) return;
+   const tb=$("#taskbar");
+   if(!tb) return;
+   const rect=tb.getBoundingClientRect();
+   const height=rect.height||46;
+   const threshold=window.innerHeight-height;
+   if(e.clientY>=threshold){
+     tb.classList.remove("autohide-hidden");
+   }else if(!tb.matches(":hover")){
+     tb.classList.add("autohide-hidden");
+   }
+ });
+ 
+   /**************** Init desktop ****************/
+ function initDesktop(){
++  loadOSState();
++  ensureFsShape();
+   seedDesktopIcons();
+   renderDesktopIcons();
+   enableSelectionBox();
+   enableIconDragging();
+   renderTaskbar();
+   const op=OS.config.glassLevel||0.8;
+   document.documentElement.style.setProperty("--glass-opacity", String(op));
+   document.documentElement.style.setProperty("--glass-border-alpha", String(0.3+0.4*op));
+   document.documentElement.style.setProperty("--icon-glass-opacity", String(0.5+0.5*op));
+   updateAccountUI();
+ }
+ 
+ /**************** DOM ready ****************/
+ document.addEventListener("DOMContentLoaded", startBoot);
+ </script>
+ </body>
+ </html>
+ 
+EOF
+)
