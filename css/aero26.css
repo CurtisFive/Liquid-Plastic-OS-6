@@ -1,0 +1,141 @@
+:root {
+
+  /* COLORS */
+  --accent: #6aa8ff;
+
+  --glass-bg: rgba(255,255,255,0.08);
+  --glass-bg-strong: rgba(255,255,255,0.12);
+
+  --glass-border: rgba(255,255,255,0.18);
+
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255,255,255,0.72);
+
+  /* BLUR */
+  --blur-main: 30px;
+
+  /* SHADOWS */
+  --shadow-soft:
+    0 8px 32px rgba(0,0,0,0.25);
+
+  --shadow-focus:
+    0 12px 40px rgba(0,0,0,0.35);
+
+  /* RADIUS */
+  --radius-window: 22px;
+  --radius-ui: 14px;
+
+  /* TIMING */
+  --transition-fast: 120ms ease;
+  --transition-main: 220ms ease;
+
+}
+
+/* =========================
+   WINDOW SYSTEM
+========================= */
+
+.os-window {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--blur-main));
+  -webkit-backdrop-filter: blur(var(--blur-main));
+
+  border: 1px solid var(--glass-border);
+
+  border-radius: var(--radius-window);
+
+  box-shadow: var(--shadow-soft);
+
+  transition:
+    transform var(--transition-main),
+    opacity var(--transition-main),
+    box-shadow var(--transition-main),
+    border-color var(--transition-main);
+
+  overflow: hidden;
+}
+
+/* ACTIVE WINDOW */
+
+.os-window.active {
+  box-shadow: var(--shadow-focus);
+
+  border-color:
+    rgba(255,255,255,0.28);
+}
+
+/* TITLEBAR */
+
+.os-titlebar {
+  height: 42px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 0 14px;
+
+  background:
+    linear-gradient(
+      to bottom,
+      rgba(255,255,255,0.10),
+      rgba(255,255,255,0.04)
+    );
+
+  border-bottom:
+    1px solid rgba(255,255,255,0.08);
+
+  user-select: none;
+}
+
+/* BUTTONS */
+
+.os-button {
+  background: rgba(255,255,255,0.08);
+
+  border:
+    1px solid rgba(255,255,255,0.12);
+
+  color: white;
+
+  border-radius: var(--radius-ui);
+
+  transition:
+    background var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+.os-button:hover {
+  background: rgba(255,255,255,0.14);
+
+  transform: translateY(-1px);
+}
+
+/* TASKBAR */
+
+.taskbar {
+  background:
+    rgba(20,20,28,0.45);
+
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+
+  border-top:
+    1px solid rgba(255,255,255,0.08);
+}
+
+/* START MENU */
+
+.start-menu {
+  background:
+    rgba(30,30,38,0.55);
+
+  backdrop-filter: blur(30px);
+
+  border:
+    1px solid rgba(255,255,255,0.12);
+
+  border-radius: 24px;
+
+  box-shadow: var(--shadow-soft);
+}
